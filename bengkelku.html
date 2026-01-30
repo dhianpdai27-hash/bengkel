@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Bengkel Pro v3</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 1000px; margin: auto; background: white; border: 1px solid #ddd; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        .tab-menu { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: #eee; font-weight: bold; border-radius: 4px; }
+        .tab-btn.active { background: #007bff; color: white; }
+        
+        .section { display: none; }
+        .section.active { display: block; }
+
+        h2, h3 { color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table, th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; color: #007bff; }
+
+        .btn { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; margin-right: 5px; }
+        .btn-blue { background: #007bff; }
+        .btn-green { background: #28a745; }
+        .btn-red { background: #dc3545; }
+
+        .print-area { border: 2px solid #000; padding: 25px; margin-top: 20px; background: #fff; color: #000; }
+        .history-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; background: #fff; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .container { border: none; box-shadow: none; width: 100%; padding: 0; }
+            .print-area { border: none; margin-top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="displayNamaBengkel">Nama Bengkel</h2>
+
+    <div class="tab-menu no-print">
+        <button class="tab-btn active" onclick="openTab(event, 'tab-input')">Input Transaksi</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-riwayat')">Riwayat Lengkap</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab-pengaturan')">Pengaturan</button>
+    </div>
+
+    <div id="tab-input" class="section active">
+        <div class="no-print">
+            <h3>Data Pelanggan & Unit</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group"><label>Nama Pelanggan:</label><input type="text" id="custName"></div>
+                <div class="form-group"><label>Alamat / No HP:</label><input type="text" id="custAddr"></div>
+                <div class="form-group"><label>Merk Mobil & No Pol:</label><input type="text" id="carInfo"></div>
+                <div class="form-group"><label>Kilometer (KM):</label><input type="number" id="km"></div>
+            </div>
+
+            <h3>Rincian Pekerjaan</h3>
+            <table id="itemTable">
+                <thead>
+                    <tr>
+                        <th>Deskripsi</th>
+                        <th style="width: 80px;">Qty</th>
+                        <th>Harga Satuan</th>
+                        <th>Subtotal</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="text" class="item-desc" placeholder="Contoh: Ganti Oli Mesin"></td>
+                        <td><input type="number" class="item-qty" oninput="calculate()"></td>
+                        <td><input type="number" class="item-price" oninput="calculate()"></td>
+                        <td class="item-sub">0</td>
+                        <td>-</td>
+                    </tr>
+                </tbody>
+            </table>
+            <button class="btn btn-blue" style="margin-top:10px" onclick="addRow()">+ Tambah Item</button>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Catatan Tambahan (Muncul di Nota):</label>
+                <textarea id="catatan" rows="2" placeholder="Contoh: Garansi servis 1 minggu / Ganti oli berikutnya KM 55.000"></textarea>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-blue" onclick="generate('Estimasi')">Buat Estimasi</button>
+                <button class="btn btn-green" onclick="generate('Nota', true)">Simpan & Cetak Nota</button>
+            </div>
+        </div>
+
+        <div id="printOutput" class="print-area" style="display:none;">
+            <center>
+                <h1 id="p-namaBengkel" style="margin:0">NAMA BENGKEL</h1>
+                <p id="p-detailBengkel">Detail Alamat & Rekening</p>
+                <hr style="border:1px solid #000">
+            </center>
+            <h3 id="p-tipe" style="text-align:center; border:none; text-decoration:underline">DOKUMEN</h3>
+            <div style="display: flex; justify-content: space-between;">
+                <p><strong>Nama:</strong> <span id="p-cust"></span><br><strong>Unit:</strong> <span id="p-unit"></span></p>
+                <p style="text-align:right"><strong>Tgl:</strong> <span id="p-tgl"></span><br><strong>KM:</strong> <span id="p-km"></span></p>
+            </div>
+            <table id="p-table"></table>
+            <h3 style="text-align:right; border:none">TOTAL: Rp <span id="p-total">0</span></h3>
+            
+            <p><strong>Catatan:</strong> <span id="p-catatan"></span></p>
+
+            <div style="margin-top: 40px; display: flex; justify-content: space-between; text-align: center;">
+                <div style="width: 200px;">Hormat Kami,<br><br><br><br><strong id="p-ownerName">( Nama Pemilik )</strong></div>
+                <div style="width: 200px;">Pelanggan,<br><br><br><br>( .................... )</div>
+            </div>
+            
+            <div class="no-print" style="text-align:center; margin-top:20px;">
+                <button class="btn btn-blue" onclick="window.print()">PRINT SEKARANG</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-riwayat" class="section">
+        <h3>Riwayat Pekerjaan Mobil</h3>
+        <input type="text" id="searchBar" placeholder="Cari Pelanggan atau No Polisi..." onkeyup="loadRiwayat()" style="margin-bottom:15px">
+        <div id="historyList"></div>
+    </div>
+
+    <div id="tab-pengaturan" class="section">
+        <h3>Pengaturan Bengkel</h3>
+        <div class="form-group"><label>Nama Bengkel:</label><input type="text" id="setNama"></div>
+        <div class="form-group"><label>Nama Pemilik (Muncul di Tanda Tangan):</label><input type="text" id="setOwner"></div>
+        <div class="form-group"><label>Alamat & Rekening:</label><input type="text" id="setDetail"></div>
+        <button class="btn btn-green" onclick="saveSettings()">Simpan Pengaturan</button>
+        <hr>
+        <button class="btn btn-blue" onclick="exportData()">Export Data</button>
+        <button class="btn btn-blue" onclick="importData()">Import Data</button>
+        <button class="btn btn-red" onclick="resetData()">Reset Semua Data</button>
+    </div>
+</div>
+
+<script>
+    function openTab(evt, tabName) {
+        document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+        if(tabName === 'tab-riwayat') loadRiwayat();
+    }
+
+    function addRow() {
+        let table = document.querySelector("#itemTable tbody");
+        let row = table.insertRow();
+        row.innerHTML = `<td><input type="text" class="item-desc"></td>
+                         <td><input type="number" class="item-qty" oninput="calculate()"></td>
+                         <td><input type="number" class="item-price" oninput="calculate()"></td>
+                         <td class="item-sub">0</td>
+                         <td><button class="btn-red" onclick="this.parentElement.parentElement.remove(); calculate();">X</button></td>`;
+    }
+
+    function calculate() {
+        let rows = document.querySelectorAll("#itemTable tbody tr");
+        let grandTotal = 0;
+        rows.forEach(r => {
+            let q = r.querySelector(".item-qty").value || 0;
+            let p = r.querySelector(".item-price").value || 0;
+            let sub = q * p;
+            r.querySelector(".item-sub").innerText = sub.toLocaleString('id-ID');
+            grandTotal += sub;
+        });
+        return grandTotal;
+    }
+
+    function generate(tipe, save = false) {
+        let total = calculate();
+        document.getElementById('printOutput').style.display = 'block';
+        document.getElementById('p-tipe').innerText = tipe.toUpperCase();
+        document.getElementById('p-cust').innerText = document.getElementById('custName').value;
+        document.getElementById('p-unit').innerText = document.getElementById('carInfo').value;
+        document.getElementById('p-km').innerText = document.getElementById('km').value;
+        document.getElementById('p-catatan').innerText = document.getElementById('catatan').value;
+        document.getElementById('p-tgl').innerText = new Date().toLocaleDateString('id-ID');
+
+        let rows = document.querySelectorAll("#itemTable tbody tr");
+        let items = [];
+        let html = "<tr><th>Deskripsi</th><th>Qty</th><th>Harga</th><th>Total</th></tr>";
+        
+        rows.forEach(r => {
+            let d = r.querySelector(".item-desc").value;
+            let q = r.querySelector(".item-qty").value;
+            let p = r.querySelector(".item-price").value;
+            if(d) {
+                html += `<tr><td>${d}</td><td>${q}</td><td>${Number(p).toLocaleString('id-ID')}</td><td>${(q*p).toLocaleString('id-ID')}</td></tr>`;
+                items.push({d, q, p});
+            }
+        });
+        document.getElementById('p-table').innerHTML = html;
+        document.getElementById('p-total').innerText = total.toLocaleString('id-ID');
+
+        if(save) {
+            let riwayat = JSON.parse(localStorage.getItem('b_history_v3') || "[]");
+            riwayat.push({
+                tgl: new Date().toLocaleDateString('id-ID'),
+                nama: document.getElementById('custName').value,
+                unit: document.getElementById('carInfo').value,
+                items: items,
+                total: total,
+                catatan: document.getElementById('catatan').value
+            });
+            localStorage.setItem('b_history_v3', JSON.stringify(riwayat));
+            alert("Berhasil Disimpan!");
+        }
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function loadRiwayat() {
+        let riwayat = JSON.parse(localStorage.getItem('b_history_v3') || "[]");
+        let search = document.getElementById('searchBar').value.toLowerCase();
+        let html = "";
+        
+        riwayat.reverse().forEach((data, index) => {
+            if(data.nama.toLowerCase().includes(search) || data.unit.toLowerCase().includes(search)) {
+                let rincian = data.items.map(i => `<li>${i.d} (${i.q} x ${Number(i.p).toLocaleString('id-ID')})</li>`).join("");
+                html += `<div class="history-card">
+                    <strong>${data.tgl} - ${data.nama} (${data.unit})</strong>
+                    <ul>${rincian}</ul>
+                    <p><strong>Total: Rp ${data.total.toLocaleString('id-ID')}</strong></p>
+                    <p style="font-size:0.9em; color:#666">Catatan: ${data.catatan || '-'}</p>
+                    <button class="btn btn-red" style="padding:5px 10px" onclick="delHistory(${index})">Hapus</button>
+                </div>`;
+            }
+        });
+        document.getElementById('historyList').innerHTML = html || "Tidak ada data.";
+    }
+
+    function delHistory(idx) {
+        if(confirm("Hapus riwayat ini?")) {
+            let riwayat = JSON.parse(localStorage.getItem('b_history_v3') || "[]");
+            riwayat.reverse().splice(idx, 1);
+            riwayat.reverse();
+            localStorage.setItem('b_history_v3', JSON.stringify(riwayat));
+            loadRiwayat();
+        }
+    }
+
+    function saveSettings() {
+        localStorage.setItem('b_nama', document.getElementById('setNama').value);
+        localStorage.setItem('b_owner', document.getElementById('setOwner').value);
+        localStorage.setItem('b_detail', document.getElementById('setDetail').value);
+        alert("Pengaturan Berhasil Disimpan!");
+        location.reload();
+    }
+
+    function loadSettings() {
+        let n = localStorage.getItem('b_nama') || "Nama Bengkel Anda";
+        let o = localStorage.getItem('b_owner') || "Nama Pemilik";
+        let d = localStorage.getItem('b_detail') || "Alamat / No. Rekening";
+        
+        document.getElementById('displayNamaBengkel').innerText = n;
+        document.getElementById('p-namaBengkel').innerText = n;
+        document.getElementById('p-detailBengkel').innerText = d;
+        document.getElementById('p-ownerName').innerText = `( ${o} )`;
+        
+        document.getElementById('setNama').value = n;
+        document.getElementById('setOwner').value = o;
+        document.getElementById('setDetail').value = d;
+    }
+
+    function exportData() {
+        let data = JSON.stringify(localStorage);
+        let blob = new Blob([data], {type: 'application/json'});
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'backup_bengkel.json';
+        a.click();
+    }
+
+    function importData() {
+        let i = document.createElement('input'); i.type = 'file';
+        i.onchange = e => {
+            let reader = new FileReader();
+            reader.onload = ev => {
+                let data = JSON.parse(ev.target.result);
+                Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+                location.reload();
+            };
+            reader.readAsText(e.target.files[0]);
+        };
+        i.click();
+    }
+
+    function resetData() {
+        if(confirm("Hapus semua data?")) { localStorage.clear(); location.reload(); }
+    }
+
+    window.onload = loadSettings;
+</script>
+
+</body>
+</html>
